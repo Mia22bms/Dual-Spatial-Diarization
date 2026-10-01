@@ -1,0 +1,54 @@
+# ===== JW_CS_Research .gitignore =====
+
+# ---- ESP-IDF build outputs (idf.py build 可重新生成) ----
+build/
+**/build/
+sdkconfig.old
+# 组件管理器自动下载的依赖（由 dependencies.lock + idf_component.yml 还原）
+managed_components/
+# 注意：sdkconfig、sdkconfig.defaults、dependencies.lock 要提交，保证可复现
+
+# ---- 编译产物 / 调试 ----
+*.o
+*.d
+*.elf
+*.map
+*.pyc
+__pycache__/
+
+# ---- 录音数据：不进 git（体积大 + 含真人/儿童语音，走 SD 卡 / Drive 管理）----
+*.wav
+*.WAV
+*.mp3
+*.flac
+*.aup3
+*.aup3-shm
+*.aup3-wal
+recordings/
+data/raw/
+
+# ---- 本地工具 / 安装包 / 压缩包 ----
+Arduino IDE/
+*.exe
+*.zip
+*.lnk
+
+# ---- 与本研究无关的课程资料 ----
+COMP239*.pdf
+PHYS125*.pdf
+16.pdf
+
+# ---- 编辑器 / 系统 ----
+.vscode/
+.idea/
+.clangd
+.cache/
+*.swp
+Thumbs.db
+desktop.ini
+.DS_Store
+~$*
+
+# ---- 机密 ----
+.env
+*.env.local
