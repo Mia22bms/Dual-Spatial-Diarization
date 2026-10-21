@@ -16,6 +16,13 @@ managed_components/
 *.pyc
 __pycache__/
 
+# ---- 不属于本仓库的本地文件夹 ----
+microphone-viz-tool/
+26 Fall/
+Summer mic音频/
+Summer_festival of learning/
+Board_official_document/
+
 # ---- 录音数据：不进 git（体积大 + 含真人/儿童语音，走 SD 卡 / Drive 管理）----
 *.wav
 *.WAV
