@@ -31,16 +31,25 @@ A single board can only measure angle, not distance; distance comes from interse
 - Mic mapping: track 2 = MIC1, track 4 = MIC2 (36 mm apart, hand-measured); tracks 1 and 3 have no microphone
 - Angle convention: 0° = perpendicular to the MIC1–MIC2 line, pointing outward; positive toward MIC1. τ = arrival time at MIC2 − arrival time at MIC1
 
-## onboard_tdoa: current status (Oct 2026)
+## onboard_tdoa: current status (Nov 2026)
 
-- Synthetic tests: sign convention correct; ~1.4° error at 30° (16 kHz, 8× interpolation). Error grows near ±90°, so speakers should stay within roughly ±60° of each board (to be verified).
-- First real recording (REC_006): pipeline runs end to end, but estimates cluster near 4° regardless of true angle (8°–42°). Background noise is largely ruled out; reverberation vs. hardware crosstalk is under investigation via near-field tests.
+- **Synthetic test:** passes (sign convention, τ→angle, interpolation, confidence). With 10 dB noise, 48 kHz is not clearly better than 16 kHz (8× interpolation).
+- **REC_006** (dining room, speakers 1.5–2.5 m away): all speakers read ≈4°. Fails.
+- **Near-field test** (REC_015, phone at 30 cm): +60° / 0° / −60° read +48° / −4° / −55° (τ = +78 / −8 / −86 µs). Signs correct, positions separated; crosstalk ruled out.
+- **Distance sweep** (REC_016, REC_018, +60°, small study room): ≈48° up to 0.5 m; 31° at 0.7 m, 27° at 1 m, 17° at 1.5 m. Reproducible across two recordings. High-confidence frames are biased too.
+- **Working hypothesis (unconfirmed):** reverberation. Next: retest in a different room; consider onset-based frame selection.
 
 ### Usage
 
 Run all scripts from inside `onboard_tdoa/` (they use relative paths). Requires `numpy`, and `matplotlib` for the scripts that write PNGs.
 
 `test_synthetic.py` needs no recording and is the easiest place to start. Recordings are not included in this repo: scripts that read `Board2_REC_006.wav` need that file placed in `onboard_tdoa/` locally.
+
+`run_segments.py` takes `--wav` and `--seg` (defaults: `Board2_REC_006.wav`, `segments.txt`):
+```
+python run_segments.py --wav REC_016.WAV --seg segments_distance.txt
+```
+Output: `<wav>_segments_summary.csv`
 
 #### General tools
 

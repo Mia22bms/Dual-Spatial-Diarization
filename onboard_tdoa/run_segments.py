@@ -8,14 +8,16 @@ interp 1 和 interp 8 各跑一次，汇总到 segments_summary.csv。
          角度中位数, 角度25百分位, 角度75百分位, confidence中位数
 """
 
+import argparse
+import os
+
 import numpy as np
 
 import wav_io
 from single_board_doa import analyze
 
-WAV = "Board2_REC_006.wav"
-SEG_FILE = "segments.txt"
-OUT_CSV = "segments_summary.csv"
+DEF_WAV = "Board2_REC_006.wav"
+DEF_SEG = "segments.txt"
 INTERPS = [1, 8]
 
 
@@ -32,15 +34,27 @@ def read_segments(path):
 
 
 def main():
-    segs = read_segments(SEG_FILE)
+    ap = argparse.ArgumentParser(description="按 segments 文件分段跑 single_board_doa")
+    ap.add_argument("--wav", default=DEF_WAV)
+    ap.add_argument("--seg", default=DEF_SEG)
+    args = ap.parse_args()
+
+    # 汇总文件名：默认 wav 保持 segments_summary.csv，其它 wav 加前缀避免覆盖
+    if args.wav == DEF_WAV:
+        out_csv = "segments_summary.csv"
+    else:
+        base = os.path.splitext(os.path.basename(args.wav))[0]
+        out_csv = f"{base}_segments_summary.csv"
+
+    segs = read_segments(args.seg)
     # 整个文件只读一次，分段共用（噪声底仍按 SPEC 从整个文件算）
-    preloaded = wav_io.read_wav(WAV)
+    preloaded = wav_io.read_wav(args.wav)
 
     out = ["label,start,end,interp,voiced_frames,"
            "angle_median,angle_p25,angle_p75,conf_median"]
     for label, start, end in segs:
         for interp in INTERPS:
-            r = analyze(WAV, start=start, end=end, interp=interp,
+            r = analyze(args.wav, start=start, end=end, interp=interp,
                         preloaded=preloaded, write_outputs=False, verbose=False)
             rows = r["rows"]
             vmask = rows[:, 4] == 1 if rows.size else np.zeros(0, dtype=bool)
@@ -57,12 +71,12 @@ def main():
             out.append(f"{label},{start:g},{end:g},{interp},{nv},"
                        f"{a_med},{a_p25},{a_p75},{c_med}")
 
-    with open(OUT_CSV, "w", encoding="utf-8") as fh:
+    with open(out_csv, "w", encoding="utf-8") as fh:
         fh.write("\n".join(out) + "\n")
 
     # 终端也打印一份
     print("\n".join(out))
-    print(f"\n汇总已写出: {OUT_CSV}")
+    print(f"\n汇总已写出: {out_csv}")
 
 
 if __name__ == "__main__":
