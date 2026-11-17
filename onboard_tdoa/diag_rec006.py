@@ -11,13 +11,17 @@ diag_rec006.py — Board2_REC_006 诊断脚本（只读，不改任何现有文�
 - diag_speaker_loudness.csv A/C/D 各自按 energy 中位数分高低两半的统计
 """
 
+import os
+
 import numpy as np
 
 import wav_io
 from gcc_phat import gcc_phat, C_SOUND, D_MIC, M_MARGIN
 
-WAV = "Board2_REC_006.wav"
-SEG_FILE = "segments.txt"
+HERE = os.path.dirname(os.path.abspath(__file__))
+WAV = os.path.join(HERE, "recordings", "Board2_REC_006.wav")
+SEG_FILE = os.path.join(HERE, "segments", "segments.txt")
+DEF_OUTDIR = os.path.join(HERE, "results", "scratch")
 
 FRAME_MS = 64.0
 HOP_MS = 32.0
@@ -164,17 +168,25 @@ def speaker_loudness(recs, segs, path):
 
 
 if __name__ == "__main__":
+    import argparse
+    ap = argparse.ArgumentParser(description="Board2_REC_006 诊断脚本")
+    ap.add_argument("--outdir", default=DEF_OUTDIR)
+    args = ap.parse_args()
+    os.makedirs(args.outdir, exist_ok=True)
+    p_all = os.path.join(args.outdir, "diag_allframes.csv")
+    p_tier = os.path.join(args.outdir, "diag_energy_tiers.csv")
+    p_spk = os.path.join(args.outdir, "diag_speaker_loudness.csv")
+
     recs, fs, nf = compute_allframes()
     grid = interp8_angle_grid(fs)
 
-    write_allframes(recs, "diag_allframes.csv")
-    tier_lines = energy_tiers(recs, grid, "diag_energy_tiers.csv")
-    spk_lines = speaker_loudness(recs, read_segments(SEG_FILE),
-                                 "diag_speaker_loudness.csv")
+    write_allframes(recs, p_all)
+    tier_lines = energy_tiers(recs, grid, p_tier)
+    spk_lines = speaker_loudness(recs, read_segments(SEG_FILE), p_spk)
 
     print(f"总帧数: {recs.shape[0]}  fs: {fs}  噪声底: {nf:.4g}")
     print("\n[diag_energy_tiers.csv]")
     print("\n".join(tier_lines))
     print("\n[diag_speaker_loudness.csv]")
     print("\n".join(spk_lines))
-    print("\n文件: diag_allframes.csv, diag_energy_tiers.csv, diag_speaker_loudness.csv")
+    print(f"\n文件: {p_all}, {p_tier}, {p_spk}")

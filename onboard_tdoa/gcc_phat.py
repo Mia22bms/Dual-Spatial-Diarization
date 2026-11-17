@@ -6,7 +6,8 @@ gcc_phat.py — 单帧 GCC-PhaT 方向估计（TDOA 项目）
 
 约定（来自 SPEC）：
 - 互谱 G(f) = X2(f)·conj(X1(f))（X1=MIC1, X2=MIC2），峰出现在 +τ
-- 不做抛物线拟合或任何亚采样点细化；interp=1 时严格取整数采样点峰
+- 默认不做抛物线拟合（parabolic=False）；可选 parabolic=True 对峰及左右相邻点做抛物线
+  拟合取顶点做亚采样点细化。interp=1 且未启用 parabolic 时严格取整数采样点峰
 - confidence 按 §5 直接在频带内求和，不从 GCC 峰值反推
 """
 
@@ -26,13 +27,15 @@ def _next_pow2_ge(x):
     return 1 << (int(np.ceil(np.log2(x))))
 
 
-def gcc_phat(frame1, frame2, fs, interp=8,
+def gcc_phat(frame1, frame2, fs, interp=8, parabolic=False,
              d=D_MIC, c=C_SOUND, fmin=FMIN, fmax=FMAX,
-             m=M_MARGIN, eps=EPS):
+             m=M_MARGIN, eps=EPS, return_curve=False):
     """对一帧估计方向。
 
     frame1: MIC1 帧 (1D), frame2: MIC2 帧 (1D), 等长 N
-    返回 dict: tau_us, angle_deg, confidence, tau_s
+    parabolic: False=整数插值峰（原样）；True=对峰及左右相邻点做抛物线拟合，取顶点
+    return_curve: True 时额外返回搜索窗内的 GCC-PhaT 曲线 curve 及对应 lags（秒）
+    返回 dict: tau_us, angle_deg, confidence, tau_s [, curve, lags]
     """
     frame1 = np.asarray(frame1, dtype=np.float64)
     frame2 = np.asarray(frame2, dtype=np.float64)
@@ -70,7 +73,16 @@ def gcc_phat(frame1, frame2, fs, interp=8,
     in_win = np.abs(lags) <= search
     sel_r = r[in_win]
     sel_lags = lags[in_win]
-    tau = sel_lags[int(np.argmax(sel_r))]   # 峰位置即 τ（秒）
+    k = int(np.argmax(sel_r))               # 峰位置
+    tau = sel_lags[k]                        # 整数插值峰即 τ（秒）
+
+    # —— 可选：抛物线亚采样细化（对峰及左右相邻点拟合，取顶点）——
+    if parabolic and 0 < k < sel_r.size - 1:
+        y0, y1, y2 = sel_r[k - 1], sel_r[k], sel_r[k + 1]
+        denom = y0 - 2.0 * y1 + y2
+        if denom != 0.0:
+            delta = 0.5 * (y0 - y2) / denom          # 顶点相对 k 的偏移（上采样点）
+            tau = sel_lags[k] + delta / (fs * interp)  # 换算回秒
 
     # —— 步骤 9：confidence 按 §5 直接在频带内求和 ——
     fb = freqs[band]
@@ -95,9 +107,13 @@ def gcc_phat(frame1, frame2, fs, interp=8,
 
     confidence = conf * penalty
 
-    return {
+    out = {
         "tau_us": tau * 1e6,     # 照实记录原始 τ（微秒）
         "angle_deg": angle,
         "confidence": confidence,
         "tau_s": tau,
     }
+    if return_curve:
+        out["curve"] = sel_r          # 搜索窗内 GCC-PhaT 曲线（未归一化）
+        out["lags"] = sel_lags        # 每点对应的延迟（秒），与 curve 等长
+    return out

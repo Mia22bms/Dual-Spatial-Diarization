@@ -16,8 +16,10 @@ import numpy as np
 import wav_io
 from single_board_doa import analyze
 
-DEF_WAV = "Board2_REC_006.wav"
-DEF_SEG = "segments.txt"
+HERE = os.path.dirname(os.path.abspath(__file__))
+DEF_WAV = os.path.join(HERE, "recordings", "Board2_REC_006.wav")
+DEF_SEG = os.path.join(HERE, "segments", "segments.txt")
+DEF_OUTDIR = os.path.join(HERE, "results", "scratch")
 INTERPS = [1, 8]
 
 
@@ -37,14 +39,26 @@ def main():
     ap = argparse.ArgumentParser(description="按 segments 文件分段跑 single_board_doa")
     ap.add_argument("--wav", default=DEF_WAV)
     ap.add_argument("--seg", default=DEF_SEG)
+    ap.add_argument("--onset-db", type=float, default=None)
+    ap.add_argument("--onset-lookback", type=int, default=3)
+    ap.add_argument("--onset-ref", choices=["prev2", "mean"], default="prev2")
+    ap.add_argument("--outdir", default=DEF_OUTDIR)
     args = ap.parse_args()
 
     # 汇总文件名：默认 wav 保持 segments_summary.csv，其它 wav 加前缀避免覆盖
     if args.wav == DEF_WAV:
-        out_csv = "segments_summary.csv"
+        out_name = "segments_summary.csv"
     else:
         base = os.path.splitext(os.path.basename(args.wav))[0]
-        out_csv = f"{base}_segments_summary.csv"
+        out_name = f"{base}_segments_summary.csv"
+    # 启用 onset 时加后缀，避免覆盖现有 summary
+    if args.onset_db is not None:
+        suffix = f"_on{args.onset_db:g}"
+        if args.onset_ref == "mean":
+            suffix += "_mean"
+        out_name = out_name[:-4] + suffix + ".csv"
+    os.makedirs(args.outdir, exist_ok=True)
+    out_csv = os.path.join(args.outdir, out_name)
 
     segs = read_segments(args.seg)
     # 整个文件只读一次，分段共用（噪声底仍按 SPEC 从整个文件算）
@@ -55,9 +69,15 @@ def main():
     for label, start, end in segs:
         for interp in INTERPS:
             r = analyze(args.wav, start=start, end=end, interp=interp,
-                        preloaded=preloaded, write_outputs=False, verbose=False)
+                        preloaded=preloaded, write_outputs=False, verbose=False,
+                        onset_db=args.onset_db, onset_lookback=args.onset_lookback,
+                        onset_ref=args.onset_ref)
             rows = r["rows"]
-            vmask = rows[:, 4] == 1 if rows.size else np.zeros(0, dtype=bool)
+            onset = r.get("onset")
+            if onset is not None:
+                vmask = onset == 1
+            else:
+                vmask = rows[:, 4] == 1 if rows.size else np.zeros(0, dtype=bool)
             nv = int(vmask.sum())
             if nv > 0:
                 angs = rows[vmask, 2]

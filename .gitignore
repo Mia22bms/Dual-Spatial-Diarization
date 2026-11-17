@@ -59,3 +59,8 @@ desktop.ini
 # ---- 机密 ----
 .env
 *.env.local
+
+# ---- 个人/本地，不进 git ----
+/paper/
+/.claude/
+onboard_tdoa/results/scratch/

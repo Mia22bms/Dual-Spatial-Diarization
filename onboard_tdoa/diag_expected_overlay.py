@@ -6,14 +6,18 @@ diag_expected_overlay.py — 用现有 CSV 画「A/C/D 片段 voiced 帧 + 期�
 每个片段上方标说话人字母；在 +42/+32/+8° 画三条红线。
 """
 
+import os
+import argparse
 import numpy as np
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-CSV = "Board2_REC_006_0-247_f64_i8.csv"
-SEG_FILE = "segments.txt"
-OUT = "diag_expected_overlay.png"
+HERE = os.path.dirname(os.path.abspath(__file__))
+CSV = os.path.join(HERE, "results", "02_rec006", "Board2_REC_006_0-247_f64_i8.csv")
+SEG_FILE = os.path.join(HERE, "segments", "segments.txt")
+DEF_OUTDIR = os.path.join(HERE, "results", "scratch")
+OUT_NAME = "diag_expected_overlay.png"
 FS = 16000  # 已知（原图标题 fs=16000Hz），用于画 interp1 档位虚线
 
 EXPECTED = {"A": 42.0, "C": 32.0, "D": 8.0}  # 红线角度
@@ -49,6 +53,12 @@ def read_segments(path):
 
 
 def main():
+    ap = argparse.ArgumentParser(description="A/C/D voiced 帧 + 期望角度叠加图")
+    ap.add_argument("--outdir", default=DEF_OUTDIR)
+    args = ap.parse_args()
+    os.makedirs(args.outdir, exist_ok=True)
+    out = os.path.join(args.outdir, OUT_NAME)
+
     data = read_csv(CSV)
     t = data["time_s"]
     ang = data["angle_deg"]
@@ -94,9 +104,9 @@ def main():
                  "(fs=16000Hz, interp=8, frame=64ms)")
     ax.grid(True, alpha=0.2)
     fig.tight_layout()
-    fig.savefig(OUT, dpi=120)
+    fig.savefig(out, dpi=120)
     plt.close(fig)
-    print(f"图已写出: {OUT}")
+    print(f"图已写出: {out}")
 
 
 if __name__ == "__main__":

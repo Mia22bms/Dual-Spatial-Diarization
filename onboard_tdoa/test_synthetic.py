@@ -266,9 +266,17 @@ def print_stats(rows):
 
 
 if __name__ == "__main__":
+    import os
+    import argparse
+    HERE = os.path.dirname(os.path.abspath(__file__))
+    ap = argparse.ArgumentParser(description="合成信号测试（SPEC §12-A）")
+    ap.add_argument("--outdir", default=os.path.join(HERE, "results", "scratch"))
+    args = ap.parse_args()
+    os.makedirs(args.outdir, exist_ok=True)
+
     # —— 原 80 行表（保留不动）——
     rows = run()
-    csv_path = "synthetic_results.csv"
+    csv_path = os.path.join(args.outdir, "synthetic_results.csv")
     try:
         write_csv(rows, csv_path)
         wrote = f"CSV 已写出: {csv_path}  (共 {len(rows)} 行)"
@@ -283,10 +291,10 @@ if __name__ == "__main__":
     print(f"统计模式：noise 源，角度 0..90 每 10°，每条件 {STATS_NFRAMES} 帧")
     print("=" * 60)
     srows = run_stats()
-    stats_csv = "synthetic_stats.csv"
+    stats_csv = os.path.join(args.outdir, "synthetic_stats.csv")
     write_stats_csv(srows, stats_csv)
     print_stats(srows)
-    stats_png = "synthetic_stats.png"
+    stats_png = os.path.join(args.outdir, "synthetic_stats.png")
     plot_stats(srows, stats_png)
     print(f"\n统计 CSV 已写出: {stats_csv}  (共 {len(srows)} 行)")
     print(f"统计图已写出: {stats_png}")
